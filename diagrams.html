@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Claude Review Mode — Architecture &amp; Data Flow</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0a0a0a;
+      color: #d4d4d4;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+      padding: 48px 40px 80px;
+      max-width: 1300px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    header { margin-bottom: 56px; border-bottom: 1px solid #1e1e1e; padding-bottom: 32px; }
+    header h1 { font-size: 22px; font-weight: 600; color: #ececec; letter-spacing: -0.3px; }
+    header p  { font-size: 13px; color: #555; margin-top: 6px; }
+
+    .toc { margin-bottom: 56px; }
+    .toc h2 { font-size: 10px; text-transform: uppercase; letter-spacing: 3px; color: #444; margin-bottom: 12px; }
+    .toc ol  { padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+    .toc a   { font-size: 13px; color: #666; text-decoration: none; }
+    .toc a:hover { color: #aaa; }
+
+    section { margin-bottom: 72px; }
+    section h2 {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      color: #555;
+      margin-bottom: 6px;
+    }
+    section h3 {
+      font-size: 19px;
+      font-weight: 600;
+      color: #ececec;
+      margin-bottom: 10px;
+      letter-spacing: -0.2px;
+    }
+    section .desc {
+      font-size: 13px;
+      color: #666;
+      margin-bottom: 28px;
+      max-width: 680px;
+    }
+
+    .diagram-wrap {
+      background: #111;
+      border: 1px solid #1e1e1e;
+      border-radius: 12px;
+      padding: 32px 24px;
+      overflow-x: auto;
+    }
+    .diagram-wrap .mermaid { min-width: 600px; }
+
+    /* Mermaid SVG overrides */
+    .mermaid svg { max-width: 100%; height: auto; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Claude Review Mode — Architecture &amp; Data Flow Diagrams</h1>
+  <p>React · TypeScript · Vite · Tailwind · Groq API · llama-3.3-70b (chat) · llama-3.1-8b (extraction)</p>
+</header>
+
+<nav class="toc">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#arch">1 — System Architecture</a></li>
+    <li><a href="#states">2 — User Interaction State Machine</a></li>
+    <li><a href="#flow-chat">3 — Data Flow A · Chat Message</a></li>
+    <li><a href="#flow-extract">4 — Data Flow B · Review Extraction</a></li>
+    <li><a href="#flow-correct">5 — Data Flow C · Correction Loop</a></li>
+  </ol>
+</nav>
+
+<!-- ─────────────────────────────────────────────────────────── -->
+<!-- 1. SYSTEM ARCHITECTURE                                       -->
+<!-- ─────────────────────────────────────────────────────────── -->
+<section id="arch">
+  <h2>Diagram 1</h2>
+  <h3>System Architecture</h3>
+  <p class="desc">
+    All components, their layers, and the connections between the browser app, browser storage, and the Groq Cloud API.
+    Arrows show the direction of data/event flow.
+  </p>
+  <div class="diagram-wrap">
+    <div class="mermaid">
+flowchart TB
+
+  User(["👤 User"])
+
+  subgraph Browser["  Browser — React + Vite + TypeScript + Tailwind  "]
+    direction TB
+
+    subgraph UILayer["  UI Components  "]
+      direction LR
+      WS["WelcomeScreen"]
+      CV["ChatView"]
+      MI["MessageItem"]
+      RA["ReviewAffordance"]
+      RP["ReviewPanel"]
+      CI["ClaimInspector"]
+      AM["AssumptionMap"]
+      WM["WhatsMissing"]
+      CC["CorrectionChip"]
+      HJP["HumanJudgmentPrompt"]
+    end
+
+    subgraph AppState["  App.tsx — Central State Manager  "]
+      direction TB
+      S1["messages: Message[]"]
+      S2["activeCorrections: AssumptionCorrection[]"]
+      S3["stakesOverride: StakesLevel | null"]
+      S4["extractingMessageIds: Set&lt;string&gt;"]
+      S5["regeneratingMessageId: string | null"]
+      S6["panelMessageId: string | null"]
+      S7["expandedClaimIds · collapsedSections"]
+    end
+
+    subgraph LibLayer["  src/lib/ — Library Layer  "]
+      direction LR
+      GL["groq.ts\nchat()"]
+      EL["extractor.ts\nextractReviewMetadata()"]
+      SL["stakes.ts\ndetectStakesHeuristic()\nshouldHideAffordance()"]
+      PL["prompts.ts\nSYSTEM_PROMPT\nEXTRACTION_SYSTEM_PROMPT"]
+      LSH["useLocalStorage.ts\nuseLocalStorageSet()"]
+    end
+
+    subgraph Persist["  Browser Persistence  "]
+      LS1[("localStorage\nrm.expandedClaims")]
+      LS2[("localStorage\nrm.collapsedSections")]
+    end
+  end
+
+  subgraph Groq["  ☁  Groq Cloud  ·  api.groq.com/openai/v1  "]
+    M1["llama-3.3-70b-versatile\nchat responses\n6 k TPM free tier"]
+    M2["llama-3.1-8b-instant\nJSON extraction\nresponse_format: json_object\n20 k TPM free tier"]
+  end
+
+  User <-->|"keyboard input + clicks"| UILayer
+  UILayer <-->|"props / callback functions"| AppState
+  AppState -->|"invokes on user action"| LibLayer
+  GL -->|"POST /chat/completions"| M1
+  EL -->|"POST /chat/completions"| M2
+  LSH <-->|"read / write"| Persist
+  AppState <-->|"useLocalStorageSet hook"| LSH
+
+  style Browser fill:#0f0f0f,stroke:#222
+  style Groq   fill:#0a1010,stroke:#1a2e2e
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────── -->
+<!-- 2. USER INTERACTION STATE MACHINE                           -->
+<!-- ─────────────────────────────────────────────────────────── -->
+<section id="states">
+  <h2>Diagram 2</h2>
+  <h3>User Interaction State Machine</h3>
+  <p class="desc">
+    Every distinct state a user can be in, the transitions between them, and what triggers each transition.
+    Nested states show the sub-states inside the Review Panel.
+  </p>
+  <div class="diagram-wrap">
+    <div class="mermaid">
+stateDiagram-v2
+  direction TB
+
+  [*] --> Welcome : App loads
+
+  Welcome --> ChatActive : User sends first message
+
+  state ChatActive {
+    direction TB
+    [*] --> Idle
+    Idle --> WaitingForResponse : handleSubmit fires\ndetectStakesHeuristic runs synchronously
+    WaitingForResponse --> Idle : Response received\npre_extraction_stakes stamped on message
+    Idle --> Idle : Follow-up from panel pre-fills input\nuser edits and sends manually
+  }
+
+  ChatActive --> PanelOpen : Click ⤴ Review this response
+
+  state PanelOpen {
+    direction TB
+    [*] --> Extracting : No cached metadata
+    [*] --> Reviewing   : Metadata already cached — zero API calls
+
+    Extracting --> Reviewing      : Extraction complete\nReviewMetadata stored on message
+    Extracting --> ExtractionError : API error or timeout
+    ExtractionError --> Extracting : Click Try again
+
+    state Reviewing {
+      direction TB
+      [*] --> Browsing
+
+      Browsing --> ClaimExpanded     : Click claim row
+      ClaimExpanded --> Browsing     : Click to collapse
+
+      Browsing --> AssumptionFlagged : Click ✓ — status = verified_true
+      AssumptionFlagged --> Browsing : Click ✓ again — toggles back to unverified
+
+      Browsing --> CorrectionInput   : Click ✗ on assumption — inline textarea opens
+      CorrectionInput --> Browsing   : Cancel or press Escape
+
+      CorrectionInput --> Regenerating : Confirm correction — handleCorrection fires
+    }
+
+    Regenerating --> Extracting : Regeneration done\nauto re-extraction starts on new response
+  }
+
+  PanelOpen --> ChatActive : Close panel
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────── -->
+<!-- 3. DATA FLOW A — CHAT MESSAGE                               -->
+<!-- ─────────────────────────────────────────────────────────── -->
+<section id="flow-chat">
+  <h2>Diagram 3</h2>
+  <h3>Data Flow A — Chat Message</h3>
+  <p class="desc">
+    What happens from the moment a user presses send to the moment the response appears with its stakes-driven
+    review affordance. Zero extraction API calls on this path.
+  </p>
+  <div class="diagram-wrap">
+    <div class="mermaid">
+flowchart TD
+  A(["User presses send"])
+  B{"isLoading?"}
+  STOP(["Ignored"])
+  C["detectStakesHeuristic\nuserText → StakesLevel\n— synchronous, zero API cost —"]
+  D["Add user message to state\nappears in UI instantly"]
+  E["setIsLoading true\nThinking… dots appear"]
+  F{"activeCorrections\nnot empty?"}
+  G["Append corrections block\nto SYSTEM_PROMPT"]
+  H["Use base SYSTEM_PROMPT"]
+  I["Build history array\nrole + content only"]
+  J["groq.chat\nllama-3.3-70b-versatile"]
+  K(["Groq Cloud API"])
+  L["Create assistantMsg\n{ id, role, content,\npre_extraction_stakes }"]
+  M["Append to messages state\nsetIsLoading false"]
+  N["ReviewAffordance renders"]
+  P{"effectiveStakes?"}
+  Q["Amber left-border\nbold hint text\nhigh-stakes visual"]
+  R["Worth reviewing? hint\nstandard visual"]
+  S["Plain ⤴ link\nno hint text"]
+
+  A --> B
+  B -->|yes| STOP
+  B -->|no| C
+  C --> D
+  D --> E
+  E --> F
+  F -->|yes| G
+  F -->|no| H
+  G --> I
+  H --> I
+  I --> J
+  J --> K
+  K --> L
+  L --> M
+  M --> N
+  N --> P
+  P -->|"high / very_high"| Q
+  P -->|medium| R
+  P -->|low| S
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────── -->
+<!-- 4. DATA FLOW B — REVIEW EXTRACTION                         -->
+<!-- ─────────────────────────────────────────────────────────── -->
+<section id="flow-extract">
+  <h2>Diagram 4</h2>
+  <h3>Data Flow B — Review Extraction</h3>
+  <p class="desc">
+    What happens when a user opens the Review Panel. Extraction is lazy — it only fires on first open
+    and is cached on the message object for all subsequent reopens (zero API calls).
+  </p>
+  <div class="diagram-wrap">
+    <div class="mermaid">
+flowchart TD
+  A(["User clicks ⤴ Review this response"])
+  B["openPanel\nsetPanelMessageId\nsetIsPanelOpen true"]
+  C{"review_metadata\nalready on message?"}
+  CACHED["Render full panel\nfrom cache — 0 API calls"]
+  D{"extractingMessageIds\nhas this messageId?"}
+  WAIT["Panel shows skeleton\nalready in progress"]
+  E["runExtraction\nmessageId + currentMessages"]
+  F["setExtractingMessageIds add\nPanel skeleton animates in"]
+  G["Find preceding user message\nfor prompt context"]
+  H["extractReviewMetadata\nuserPrompt + assistantContent"]
+  I["groq.chat\nllama-3.1-8b-instant\nresponse_format: json_object"]
+  J(["Groq Cloud API"])
+  K["JSON.parse response\nvalidate claims · assumptions\nmissing_items arrays exist"]
+  L{"Parse OK?"}
+  ERR["setExtractionErrorIds add\nPanel shows error + Try again"]
+  M["setMessages: attach review_metadata\nto the message object"]
+  N["Panel renders\nClaimInspector · AssumptionMap\nWhatsMissing · HumanJudgmentPrompt"]
+  O["setExtractingMessageIds delete"]
+  RETRY(["User clicks Try again → runExtraction"])
+
+  A --> B --> C
+  C -->|yes| CACHED
+  C -->|no| D
+  D -->|yes| WAIT
+  D -->|no| E
+  E --> F --> G --> H --> I --> J --> K --> L
+  L -->|fail| ERR
+  L -->|ok| M --> N --> O
+  ERR --> RETRY
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────── -->
+<!-- 5. DATA FLOW C — CORRECTION LOOP                           -->
+<!-- ─────────────────────────────────────────────────────────── -->
+<section id="flow-correct">
+  <h2>Diagram 5</h2>
+  <h3>Data Flow C — Correction Loop</h3>
+  <p class="desc">
+    The full lifecycle of marking an assumption wrong, providing a correction, triggering regeneration,
+    and how the correction persists into every future message in the session.
+    Two Groq API calls per correction: one regeneration + one re-extraction.
+  </p>
+  <div class="diagram-wrap">
+    <div class="mermaid">
+flowchart TD
+  A(["User clicks ✗ on an assumption row"])
+  B["showCorrectionInput = true\nRow expands — textarea + Confirm + Cancel"]
+  C{"User action"}
+  CANCEL(["Input collapses — no state change"])
+  D["onCorrect propagates up:\nAssumptionRow → AssumptionMap\n→ ReviewPanel → App.handleCorrection"]
+  E["Build AssumptionCorrection\n{ assumption_id, message_id,\noriginal_text, user_correction }"]
+  F["setActiveCorrections append\nCorrections banner updates in ChatView"]
+  G["updateAssumptionStatus marked_wrong\nRow turns red in AssumptionMap"]
+  H["Store message.originalContent\nsave original response text"]
+  I["setRegeneratingMessageId\nMessage dims to opacity-30\nOrange bounce dots appear below"]
+  J["Build correctionNote for ALL active corrections:\nAssume X instead of Y\n— one note per correction in array —"]
+  K["Append correctionNote to\nlast user message in history"]
+  L["groq.chat\nllama-3.3-70b-versatile"]
+  M(["Groq Cloud API"])
+  N["setMessages: new content\nwas_regenerated = true\nreview_metadata cleared"]
+  O["setRegeneratingMessageId null\nBounce dots disappear\n↺ Regenerated badge shows"]
+  P["See original response\ntoggle becomes available\noriginalContent preserved"]
+  Q["runExtraction auto-fires\nPanel shows skeleton again"]
+  R["New ReviewMetadata\nfresh claims + assumptions\nfor corrected response"]
+  S["Active corrections banner persists\nhowing all corrections as chips\nX to remove individually"]
+  T(["Future handleSubmit calls inject\nall active corrections into SYSTEM_PROMPT\ncorrection memory active for thread"])
+
+  A --> B --> C
+  C -->|Cancel / Escape| CANCEL
+  C -->|"Confirm (or Cmd+Enter)"| D
+  D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N --> O --> P --> Q --> R --> S --> T
+    </div>
+  </div>
+</section>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif',
+    fontSize: 13,
+    flowchart: {
+      curve: 'basis',
+      padding: 20,
+      nodeSpacing: 40,
+      rankSpacing: 48,
+      useMaxWidth: true,
+    },
+    stateDiagram: {
+      padding: 8,
+    },
+    themeVariables: {
+      background:          '#111111',
+      mainBkg:             '#1a1a1a',
+      nodeBorder:          '#2e2e2e',
+      clusterBkg:          '#161616',
+      clusterBorder:       '#2a2a2a',
+      titleColor:          '#888888',
+      edgeLabelBackground: '#111111',
+      lineColor:           '#444444',
+      primaryColor:        '#1e1e1e',
+      primaryTextColor:    '#d4d4d4',
+      primaryBorderColor:  '#333333',
+      secondaryColor:      '#161616',
+      secondaryTextColor:  '#aaaaaa',
+      tertiaryColor:       '#111111',
+      tertiaryTextColor:   '#888888',
+      noteBkgColor:        '#1a1a1a',
+      noteTextColor:       '#aaaaaa',
+      activationBkgColor:  '#1e1e1e',
+      activationBorderColor:'#333333',
+      textColor:           '#d4d4d4',
+      taskTextColor:       '#d4d4d4',
+      labelTextColor:      '#d4d4d4',
+      loopTextColor:       '#d4d4d4',
+      attributeBackgroundColorOdd:  '#161616',
+      attributeBackgroundColorEven: '#1a1a1a',
+    }
+  });
+</script>
+</body>
+</html>
