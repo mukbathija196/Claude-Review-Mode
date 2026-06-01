@@ -25,13 +25,13 @@ interface WelcomeScreenProps {
 
 export default function WelcomeScreen({ inputValue, onInputChange, onSubmit, isLoading }: WelcomeScreenProps) {
   return (
-    <div className="flex-1 flex flex-col items-center justify-center px-6 pb-8 min-h-0">
+    <div className="flex-1 flex flex-col items-center justify-center px-4 md:px-6 pb-6 md:pb-8 min-h-0">
       {/* Logo + heading */}
       <div className="flex items-center gap-3 mb-8">
         <span className="text-[#c96442]">
           <ClaudeLogo />
         </span>
-        <h1 className="text-[2.2rem] font-light text-[#c4a882] tracking-tight">
+        <h1 className="text-[1.6rem] md:text-[2.2rem] font-light text-[#c4a882] tracking-tight">
           Hello There!
         </h1>
       </div>

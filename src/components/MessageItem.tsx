@@ -89,7 +89,7 @@ export default function MessageItem({
   if (isUser) {
     return (
       <div className="flex justify-end mb-6">
-        <div className="max-w-[75%] bg-[#1e1e1e] border border-[#2e2e2e] rounded-2xl px-4 py-3 text-sm text-[#ececec] leading-relaxed">
+        <div className="max-w-[85%] md:max-w-[75%] bg-[#1e1e1e] border border-[#2e2e2e] rounded-2xl px-4 py-3 text-sm text-[#ececec] leading-relaxed">
           {message.content}
         </div>
       </div>

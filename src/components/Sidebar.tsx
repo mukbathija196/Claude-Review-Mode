@@ -12,7 +12,7 @@ import {
 
 export default function Sidebar() {
   return (
-    <div className="w-64 shrink-0 flex flex-col bg-[#171717] border-r border-[#2a2a2a] h-full">
+    <div className="hidden md:flex w-64 shrink-0 flex-col bg-[#171717] border-r border-[#2a2a2a] h-full">
       {/* Tab bar */}
       <div className="flex items-center gap-1 px-2 pt-3 pb-2">
         <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#2a2a2a] text-[#ececec] text-sm font-medium">

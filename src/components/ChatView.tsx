@@ -54,7 +54,7 @@ export default function ChatView({
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* Top bar: stakes override toggle (right-aligned) */}
-      <div className="shrink-0 flex items-center justify-end px-6 py-1.5 border-b border-[#161616]">
+      <div className="shrink-0 flex items-center justify-end px-4 md:px-6 py-1.5 border-b border-[#161616]">
         <button
           onClick={onToggleStakesOverride}
           title={isOverrideOn ? 'Turn off high-stakes mode' : 'Force high-stakes review treatment for all responses'}
@@ -80,7 +80,7 @@ export default function ChatView({
       {/* Active corrections banner */}
       {activeCorrections.length > 0 && (
         <div className="shrink-0 border-b border-[#1a1a1a] bg-[#0d0d0d] px-6 py-2">
-          <div className="max-w-[700px] mx-auto flex items-start gap-2 flex-wrap">
+          <div className="max-w-[700px] mx-auto flex items-start gap-2 flex-wrap px-1 md:px-0">
             <span className="text-[9px] uppercase tracking-widest text-[#444] font-semibold shrink-0 pt-[3px]">
               Active corrections:
             </span>
@@ -129,7 +129,7 @@ export default function ChatView({
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto min-h-0">
-        <div className="max-w-[700px] mx-auto px-6 pt-8 pb-4">
+        <div className="max-w-[700px] mx-auto px-4 md:px-6 pt-6 md:pt-8 pb-4">
           {messages.map((msg) => (
             <MessageItem
               key={msg.id}
@@ -166,7 +166,7 @@ export default function ChatView({
       </div>
 
       {/* Input */}
-      <div className="px-6 pb-5 pt-3">
+      <div className="px-3 md:px-6 pb-4 md:pb-5 pt-2 md:pt-3">
         <div className="max-w-[700px] mx-auto">
           <InputBox
             value={inputValue}

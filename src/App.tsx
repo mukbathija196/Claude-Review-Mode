@@ -332,9 +332,37 @@ export default function App() {
           )}
         </div>
 
-        {/* Review Panel — slides in from right */}
+        {/* Review Panel — mobile: full-screen slide-up overlay */}
         <div
-          className="shrink-0 overflow-hidden border-l border-[#2a2a2a] transition-[width] duration-300 ease-out"
+          className={`md:hidden fixed inset-0 z-50 transform transition-transform duration-300 ease-out ${
+            isPanelOpen ? 'translate-y-0' : 'translate-y-full'
+          }`}
+        >
+          {activeMessage && (
+            <ReviewPanel
+              message={activeMessage}
+              isExtracting={panelMessageId ? extractingMessageIds.has(panelMessageId) : false}
+              hasExtractionError={panelMessageId ? extractionErrorIds.has(panelMessageId) : false}
+              onRetryExtraction={() => panelMessageId && retryExtraction(panelMessageId)}
+              onClose={closePanel}
+              expandedClaimIds={expandedClaimIds}
+              onToggleClaim={toggleClaim}
+              collapsedSections={collapsedSections}
+              onToggleSection={toggleSection}
+              onUpdateAssumptionStatus={(assumptionId, status) =>
+                updateAssumptionStatus(activeMessage.id, assumptionId, status)
+              }
+              onFollowUp={handleFollowUp}
+              onCorrect={(assumptionId, correctionText) =>
+                handleCorrection(activeMessage.id, assumptionId, correctionText)
+              }
+            />
+          )}
+        </div>
+
+        {/* Review Panel — desktop: slides in from right */}
+        <div
+          className="hidden md:block shrink-0 overflow-hidden border-l border-[#2a2a2a] transition-[width] duration-300 ease-out"
           style={{ width: isPanelOpen ? '600px' : '0px' }}
         >
           <div style={{ width: '600px' }} className="h-full">
