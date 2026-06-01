@@ -53,29 +53,6 @@ export default function ChatView({
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      {/* Top bar: stakes override toggle (right-aligned) */}
-      <div className="shrink-0 flex items-center justify-end px-4 md:px-6 py-1.5 border-b border-[#161616]">
-        <button
-          onClick={onToggleStakesOverride}
-          title={isOverrideOn ? 'Turn off high-stakes mode' : 'Force high-stakes review treatment for all responses'}
-          className={`flex items-center gap-1.5 text-[10px] transition-colors ${
-            isOverrideOn
-              ? 'text-[#c49b6b] hover:text-[#d4ab7b]'
-              : 'text-[#3a3a3a] hover:text-[#555]'
-          }`}
-        >
-          <span>⚙</span>
-          <span>Treat as high-stakes</span>
-          {/* Toggle indicator dot */}
-          <span
-            className={`w-2 h-2 rounded-full border transition-colors ${
-              isOverrideOn
-                ? 'bg-[#c49b6b] border-[#c49b6b]'
-                : 'border-[#3a3a3a]'
-            }`}
-          />
-        </button>
-      </div>
 
       {/* Active corrections banner */}
       {activeCorrections.length > 0 && (
