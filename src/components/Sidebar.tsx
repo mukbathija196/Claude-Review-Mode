@@ -60,9 +60,9 @@ export default function Sidebar() {
       <div className="px-2 py-3 border-t border-[#2a2a2a]">
         <div className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-[#242424] transition-colors cursor-pointer">
           <div className="w-7 h-7 rounded-full bg-[#3a3a3a] flex items-center justify-center text-xs font-semibold text-[#ccc] shrink-0">
-            M
+            U
           </div>
-          <span className="flex-1 text-sm text-[#a3a3a3] truncate">Mukul · Pro</span>
+          <span className="flex-1 text-sm text-[#a3a3a3] truncate">User · Pro</span>
           <ChevronDown size={14} className="text-[#555] shrink-0" />
           <Download size={14} className="text-[#555] shrink-0" />
         </div>
