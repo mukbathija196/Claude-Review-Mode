@@ -61,7 +61,7 @@ export default function InputBox({
         <div className="flex items-center gap-2">
           {/* Model badge */}
           <button className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs text-[#666] hover:text-[#999] hover:bg-[#2a2a2a] transition-colors border border-[#2e2e2e]">
-            llama-3.3-70b
+            gpt-oss-120b
             <ChevronDown size={11} />
           </button>
 
