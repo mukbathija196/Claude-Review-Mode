@@ -152,7 +152,7 @@ export default function ChatView({
             isLoading={isLoading}
           />
           <p className="text-center text-[10px] text-[#404040] mt-2">
-            Review Mode · Chat: llama-3.3-70b · Review: llama-3.1-8b
+            Review Mode · Chat: gpt-oss-120b · Review: gpt-oss-120b
           </p>
         </div>
       </div>

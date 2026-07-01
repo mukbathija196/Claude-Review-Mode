@@ -1,5 +1,5 @@
-export const CHAT_MODEL = 'llama-3.3-70b-versatile';
-export const EXTRACTION_MODEL = 'llama-3.1-8b-instant'; // used in Phase 3
+export const CHAT_MODEL = 'openai/gpt-oss-120b';
+export const EXTRACTION_MODEL = 'openai/gpt-oss-120b';
 
 const GROQ_BASE = 'https://api.groq.com/openai/v1';
 
